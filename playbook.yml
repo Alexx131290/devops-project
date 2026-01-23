@@ -2,6 +2,18 @@
   become: true
   become_user: root
   tasks:
+    # --- PASO 1: COPIAR ARCHIVOS (ESTO ES LO QUE FALTABA) ---
+    - name: Copy Deployment file to k8s node
+      copy:
+        src: /home/ubuntu/Deployment.yml
+        dest: /home/ubuntu/Deployment.yml
+
+    - name: Copy Service file to k8s node
+      copy:
+        src: /home/ubuntu/Service.yml
+        dest: /home/ubuntu/Service.yml
+
+    # --- PASO 2: LIMPIEZA (LO QUE YA TENIAS) ---
     - name: delete old deployment
       command: kubectl delete -f /home/ubuntu/Deployment.yml --kubeconfig=/home/ubuntu/.kube/config
       ignore_errors: true
@@ -10,6 +22,7 @@
       command: kubectl delete -f /home/ubuntu/Service.yml --kubeconfig=/home/ubuntu/.kube/config
       ignore_errors: true
 
+    # --- PASO 3: DESPLIEGUE FINAL ---
     - name: create new deployment
       command: kubectl apply -f /home/ubuntu/Deployment.yml --kubeconfig=/home/ubuntu/.kube/config
 
