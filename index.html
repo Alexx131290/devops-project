@@ -1,64 +1,45 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Proyecto Final DevOps</title>
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            color: #333;
+pipeline {
+    agent any
+    
+    environment {
+        MINIKUBE_HOME = '/home/ubuntu/.minikube'
+        KUBECONFIG = '/var/lib/jenkins/.kube/config'
+    }
+    
+    stages {
+        stage('1. Descargar Código') {
+            steps {
+                echo '--- Bajando actualización v2 ---'
+                git branch: 'main', url: 'https://github.com/Alexx131290/devops-project.git'
+            }
         }
-        .card {
-            background: white;
-            padding: 50px;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-            text-align: center;
-            max-width: 500px;
-            width: 90%;
-            transition: transform 0.3s ease;
-        }
-        .card:hover {
-            transform: translateY(-5px);
-        }
-        h1 { color: #2d3748; margin-bottom: 10px; font-size: 2.5em; }
-        p { color: #718096; font-size: 1.1em; line-height: 1.6; }
-        .divider { border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0; }
-        .badge {
-            background-color: #48bb78;
-            color: white;
-            padding: 8px 15px;
-            border-radius: 50px;
-            font-size: 0.85em;
-            font-weight: bold;
-            display: inline-block;
-            margin: 5px;
-            box-shadow: 0 2px 5px rgba(72, 187, 120, 0.4);
-        }
-        .badge-blue { background-color: #4299e1; box-shadow: 0 2px 5px rgba(66, 153, 225, 0.4); }
-        .footer { margin-top: 40px; font-size: 0.8em; color: #a0aec0; letter-spacing: 1px; text-transform: uppercase; }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <h1>¡Hola Profe! 👋</h1>
-        <p>Entrega final de la materia DevOps.<br><strong>Alumno:</strong> Richard Mendoza Ochoa</p>
         
-        <hr class="divider">
+        stage('2. Construir Imagen v2') {
+            steps {
+                echo '--- Creando la imagen v2 ---'
+                // Construimos la versión 2 explícitamente
+                sh 'docker build -t mi-tarea:v2 .'
+            }
+        }
         
-        <p>Ciclo CI/CD completado exitosamente.</p>
-        <div style="margin-top: 20px;">
-            <span class="badge">✔️ Jenkins Build: PASS</span>
-            <span class="badge badge-blue">🚀 Kubernetes: LIVE</span>
-        </div>
+        stage('3. Cargar a Cluster') {
+            steps {
+                echo '--- Subiendo v2 a Minikube ---'
+                sh 'minikube image load mi-tarea:v2'
+            }
+        }
         
-        <div class="footer">Desplegado v3.0 desde GitHub</div>
-    </div>
-</body>
-</html>
+        stage('4. Desplegar Tarea') {
+            steps {
+                echo '--- ¡Actualizando el sitio! ---'
+                // Borramos lo viejo
+                sh 'kubectl delete deployment tarea-final --ignore-not-found=true'
+                sh 'kubectl delete service tarea-final --ignore-not-found=true'
+                
+                // Creamos el nuevo con la v2
+                sh 'kubectl create deployment tarea-final --image=mi-tarea:v2'
+                sh 'kubectl create service nodeport tarea-final --tcp=80:80 --node-port=30000'
+            }
+        }
+    }
+}
